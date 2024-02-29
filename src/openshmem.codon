@@ -1,0 +1,247 @@
+# Copyright (C) 2022 Tactical Computing Labs. <https://www.tactcomplabs.com>
+
+from internal.gc import sizeof as _sizeof
+
+def init() -> int:
+   from C import shmem_init() -> int
+   return shmem_init()
+
+def finalize() -> int:
+   from C import shmem_finalize() -> int
+   return shmem_finalize()
+
+def my_pe() -> int:
+   from C import shmem_my_pe() -> int
+   return shmem_my_pe()
+
+def n_pes() -> int:
+   from C import shmem_n_pes() -> int
+   return shmem_n_pes()
+
+def fence() -> int:
+   from C import shmem_fence() -> int
+   return shmem_fence()
+
+def quiet() -> int:
+   from C import shmem_quiet() -> int
+   return shmem_quiet()
+
+def sync_all() -> int:
+   from C import shmem_sync_all() -> int
+   return shmem_sync_all()
+
+def barrier_all() -> int:
+   from C import shmem_barrier_all() -> int
+   return shmem_barrier_all()
+
+def team_world() -> int:
+   from C import SHMEM_TEAM_WORLD : int
+   return SHMEM_TEAM_WORLD
+
+def team_shared() -> int:
+   from C import SHMEM_TEAM_SHARED : int
+   return SHMEM_TEAM_SHARED
+
+@tuple
+class SymmetricArray[T]:
+   _ptr : Ptr[byte]
+   _nelems : int
+
+   def __new__(nelems : int) -> SymmetricArray[T]:
+      from C import shmem_malloc(int) -> Ptr[byte]
+      return (shmem_malloc(nelems*_sizeof(T)), nelems)
+
+   def __del__(self):
+      from C import shmem_free(int) -> Ptr[byte]
+      shmem_free(self._ptr)
+
+   def __copy__(self) -> SymmetricArray[T]:
+       p = SymmetricArray[T](self.len)
+       str.memcpy(p._ptr.as_byte(), self.ptr.as_byte(), self.len * sizeof(T))
+       return (self._ptr, self.len, T)
+
+   def __deepcopy__(self) -> SymmetricArray[T]:
+       p = SymmetricArray[T](self.len)
+       i = 0
+       while i < self.len:
+           p[i] = self._ptr[i].__deepcopy__()
+           i += 1
+       return p
+
+   def __len__(self) -> int:
+       return self._nelems
+
+   def __bool__(self) -> bool:
+       return bool(self.len)
+
+   def __getitem__(self, index: int) -> T:
+      p = self._ptr
+      n = self._nelems
+      if index < 0:
+          index += n
+      if index < 0 or index >= n:
+          raise IndexError(f"SymmetricArray index {index} out of range 0..{n}")
+      return p[index]
+
+   def slice(self, s: int, e: int) -> SymmetricArray[T]:
+        return (self._ptr + s, e - s)
+
+   def __setitem__(self, index: int, what: T):
+      p = self._ptr
+      n = self._nelems
+      if index < 0:
+          index += n
+      if index < 0 or index >= n:
+          raise IndexError(f"tuple index {index} out of range 0..{n}")
+      p[index] = what
+
+   def put(self, src : List[T], pe : int) -> int:
+      if len(src) == self._nelems:
+         from C import shmem_put(Ptr[byte], Ptr[byte], int) -> int
+         return shmem_put(self._ptr, src.arr.ptr, pe)
+      return -1
+
+   def nbput(self, src : List[T], pe : int) -> int:
+      if len(src) == self._nelems:
+         from C import shmem_nbput(Ptr[byte], Ptr[byte], int) -> int
+         return shmem_nbput(self._ptr, src.arr.ptr, pe)
+      return -1
+
+   def put(self, src : List[T], pe : int, blocking : bool) -> int:
+      if blocking:
+         return self.put(src, pe)
+      return self.nbput(src, pe)
+         
+   def get(self, dst : List[T], pe : int) -> int:
+      if len(dst) == self._nelems:
+         from C import shmem_get(Ptr[byte], Ptr[byte], int) -> int
+         return shmem_get(self._ptr, dst.arr.ptr, pe)
+      return -1
+
+   def nbget(self, dst : List[T], pe : int) -> int:
+      if len(dst) == self._nelems:
+         from C import shmem_nbget(Ptr[byte], Ptr[byte], int) -> int
+         return shmem_nbget(self._ptr, dst.arr.ptr, pe)
+      return -1
+
+   def get(self, dst : List[T], pe : int, blocking : bool) -> int:
+      if blocking:
+          return self.get(dst, pe)
+      return self.nbget(dst, pe)
+
+   def max(self, dst : T):
+      from C import SHMEM_TEAM_WORLD : int
+
+      if isinstance(dst, int):
+         from C import shmem_int_max_reduce(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_int_max_reduce(SHMEM_TEAM_WORLD, dst.addr, self._ptr, self.nelems)
+      if isinstance(dst, float):
+         from C import shmem_double_max_reduce(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_double_max_reduce(SHMEM_TEAM_WORLD, dst.addr, self._ptr, self.nelems)
+      raise IndexError(f"SymmetricArray max does not support type {T}")
+
+   def min(self, dst : T) -> int :
+      from C import SHMEM_TEAM_WORLD : int
+
+      if isinstance(dst, int):
+         from C import shmem_int_min_reduce(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_int_min_reduce(SHMEM_TEAM_WORLD, dst.addr, self._ptr, self.nelems)
+      if isinstance(dst, float):
+         from C import shmem_double_min_reduce(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_double_min_reduce(SHMEM_TEAM_WORLD, dst.addr, self._ptr, self.nelems)
+      raise IndexError(f"SymmetricArray min does not support type {T}")
+
+   def sum(self, dst : T) -> int :
+      from C import SHMEM_TEAM_WORLD : int
+
+      if isinstance(dst, int):
+         from C import shmem_int_sum_reduce(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_int_sum_reduce(SHMEM_TEAM_WORLD, dst.addr, self._ptr, self.nelems)
+      if isinstance(dst, float):
+         from C import shmem_double_sum_reduce(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_double_sum_reduce(SHMEM_TEAM_WORLD, dst.addr, self._ptr, self.nelems)
+      raise IndexError(f"SymmetricArray sum does not support type {T}")
+
+   def prod(self, dst : T) -> int :
+      from C import SHMEM_TEAM_WORLD : int
+
+      if isinstance(dst, int):
+         from C import shmem_int_prod_reduce(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_int_prod_reduce(SHMEM_TEAM_WORLD, dst.addr, self._ptr, self.nelems)
+      if isinstance(dst, float):
+         from C import shmem_double_prod_reduce(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_double_prod_reduce(SHMEM_TEAM_WORLD, dst.addr, self._ptr, self.nelems)
+      raise IndexError(f"SymmetricArray prod does not support type {T}")
+
+   def all2all(self, src : List[T]) -> int :
+      if src.len == self.len:
+          raise IndexError(f"SymmetricArray range != src Array range")
+
+      from C import SHMEM_TEAM_WORLD : int
+
+      if isinstance(src, int):
+         from C import shmem_int_alltoall(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_int_alltoall(SHMEM_TEAM_WORLD, self._ptr, src.arr.ptr, src.len) 
+      if isinstance(src, float):
+         from C import shmem_double_alltoall(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_double_alltoall(SHMEM_TEAM_WORLD, self._ptr, src.arr.ptr, src.len) 
+      raise IndexError(f"SymmetricArray all2all does not support type {T}")
+
+   def broadcast(self, src : List[T]) -> int:
+      if src.len == self.len:
+          raise IndexError(f"SymmetricArray range != src Array range")
+
+      from C import SHMEM_TEAM_WORLD : int
+
+      if isinstance(src, int):
+         from C import shmem_int_broadcast(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_int_broadcast(SHMEM_TEAM_WORLD, self._ptr, src.arr.ptr, src.len) 
+      if isinstance(src, float):
+         from C import shmem_double_broadcast(int, Ptr[byte], Ptr[byte], int) -> int
+         return shmem_double_broadcast(SHMEM_TEAM_WORLD, self._ptr, src.arr.ptr, src.len) 
+      raise IndexError(f"SymmetricArray broadcast does not support type {T}")
+
+@tuple
+class Runtime:
+   def __init__(self):
+      pass
+
+   def __enter__(self) -> int:
+      from C import shmem_init() -> int
+      return shmem_init()
+
+   def __exit__(self) -> int:
+      from C import shmem_finalize() -> int
+      return shmem_finalize()
+
+   def my_pe(self) -> int:
+      from C import shmem_my_pe() -> int
+      return shmem_my_pe()
+
+   def n_pes(self) -> int:
+      from C import shmem_n_pes() -> int
+      return shmem_n_pes()
+
+   def fence(self) -> int:
+      from C import shmem_fence() -> int
+      return shmem_fence()
+
+   def quiet(self) -> int:
+      from C import shmem_quiet() -> int
+      return shmem_quiet()
+
+   def sync_all(self) -> int:
+      from C import shmem_sync_all() -> int
+      return shmem_sync_all()
+
+   def barrier_all(self) -> int:
+      from C import shmem_barrier_all() -> int
+      return shmem_barrier_all()
+
+   def team_world(self) -> int:
+      from C import SHMEM_TEAM_WORLD : int
+      return SHMEM_TEAM_WORLD
+
+   def team_shared(self) -> int:
+      from C import SHMEM_TEAM_SHARED : int
+      return SHMEM_TEAM_SHARED

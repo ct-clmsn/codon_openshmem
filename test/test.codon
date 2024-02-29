@@ -1,0 +1,9 @@
+# Copyright (C) 2022 Tactical Computing Labs. <https://www.tactcomplabs.com>
+
+from openshmem import Runtime, SymmetricArray
+
+with Runtime() as rt:
+   print("PE", rt.my_pe(), rt.n_pes())
+   a = SymmetricArray[int](10)
+   print("symmetric array allocated", len(a))
+   print("HERE")
