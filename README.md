@@ -24,7 +24,7 @@ Christopher Taylor
 
 ### Special Thanks
 
-* The OpenSHMEM developers
+* The OpenSHMEM developers and committee
 * Sandia National Labs/US Department of Energy
 
 ### Dependencies
