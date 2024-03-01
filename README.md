@@ -4,12 +4,11 @@
 <!--   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)        -->
 # [codon_openshmem](https://github.com/ct-clmsn/codon_openshmem)
 
-`codon_openshmem` (COS) wraps the existing [Sandia OpenSHMEM](https://github.com/Sandia-OpenSHMEM/SOS) library implemented by Sandia National Laboratory. COS provides the [codon](https://github.com/exaloop/codon) Python compiler [Partitioned Global Address Space](https://en.wikipedia.org/wiki/Partitioned_global_address_space) (PGAS) support.
+`codon_openshmem` (COS) wraps the existing [Sandia OpenSHMEM](https://github.com/Sandia-OpenSHMEM/SOS) library implemented by Sandia National Laboratory. COS provides the [codon](https://github.com/exaloop/codon) Python compiler [Partitioned Global Address Space](https://en.wikipedia.org/wiki/Partitioned_global_address_space) (PGAS) support. The codon Python compiler is not an interpreter it compiles Python applications to executables using LLVM.
 
 Users are able to interact with OpenSHMEM using a handful of the existing OpenSHMEM functions or users are able to interact with OpenSHMEM through a class called Runtime. Users can create distributed symmetric arrays using a templated SymmetricArray class. Users can additionally leverage Codon's support for the [static keyword](https://docs.exaloop.io/codon/language/statics) with COS.
 
 COS HPC users can benefit from Codon's native support for [OpenMP](https://docs.exaloop.io/codon/advanced/parallel), [GPUs](https://docs.exaloop.io/codon/advanced/gpu), existing [Python extensions](https://docs.exaloop.io/codon/interoperability/pyext), and portable assembly using the [LLVM IR](https://docs.exaloop.io/codon/language/llvm) interface. 
-
 
 ### Developer Notes
 
